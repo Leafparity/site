@@ -3,434 +3,813 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Leafparity — Exact equivalence checking for tree models</title>
-<meta name="description" content="Prove your XGBoost, LightGBM or scikit-learn model still gives the exact same answers after conversion to ONNX — or find the exact inputs where it doesn't.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%83%3C/text%3E%3C/svg%3E">
+<title>Leafparity</title>
+<meta name="description" content="Leafparity proves whether an XGBoost, LightGBM or scikit-learn model and its ONNX conversion give the same answer for every possible input, or shows exactly where they don't.">
+<meta property="og:title" content="Leafparity">
+<meta property="og:description" content="Exact equivalence checking for tree-ensemble models converted to ONNX.">
+<meta property="og:url" content="https://leafparity.com">
+<meta property="og:image" content="https://leafparity.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Leafparity">
+<meta name="twitter:description" content="Exact equivalence checking for tree-ensemble models converted to ONNX.">
+<meta name="twitter:image" content="https://leafparity.com/og-image.png">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="-5 -5 110 154" fill="none" stroke="%230c9b48" stroke-linecap="round" stroke-linejoin="round"%3E%0A  %3Cpath d="M50 1 C69 18 97 44 97 76 C97 104 74 124 50 142 C26 124 3 104 3 76 C3 44 31 18 50 1 Z" stroke-width="6"/%3E%0A  %3Cpath d="M50 3 V55" stroke-width="4.8" stroke-linecap="butt"/%3E%0A  %3Cpath d="M26 41 L39 52 M74 41 L61 52" stroke-width="4.8"/%3E%0A  %3Cpath d="M34 64 H66 M34 73 H66 M34 82 H66" stroke-width="4.8" stroke-linecap="butt"/%3E%0A  %3Cpath d="M5 81 L37 104 M95 81 L63 104" stroke-width="4.8"/%3E%0A  %3Cpath d="M50 93 V126 H61" stroke-width="4.8"/%3E%0A%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
 <style>
-  :root{
-    --bg:#0b0f14; --bg2:#0f151c; --panel:#121922; --panel2:#161f2a;
-    --border:#243040; --border2:#2e3d50;
-    --text:#e8edf3; --muted:#93a4b8; --muted2:#6b7d93;
-    --accent:#5eead4; --accent2:#34d399; --accent-dim:#1e5c50;
-    --bad:#f87171; --bad-dim:#3a1f22;
-    --good:#4ade80;
-    --mono:'JetBrains Mono', ui-monospace, monospace;
-    --sans:'Inter', -apple-system, sans-serif;
-  }
-  *{box-sizing:border-box;}
-  html{scroll-behavior:smooth;}
-  body{
-    margin:0; background:var(--bg); color:var(--text);
-    font-family:var(--sans); line-height:1.6; -webkit-font-smoothing:antialiased;
-  }
-  a{color:var(--accent);}
-  .wrap{max-width:1040px; margin:0 auto; padding:0 24px;}
-  code, .mono{font-family:var(--mono);}
+:root{
+  color-scheme: light;
+  --page:#fbf9f4;
+  --paper:#fffdf8;
+  --band:#f5f2ea;
+  --ink:#1b1c16;
+  --ink-2:#4d4e44;
+  --ink-3:#75756a;
+  --rule:#e8e2d3;
+  --green:#0c9b48;
+  --green-deep:#087a39;
+  --green-wash:#e9f5ed;
+  --red:#b42318;
+  --red-wash:#fcefed;
+  --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans:"IBM Plex Sans", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --wrap:1260px;
+  --grid:rgba(27,28,22,.05);
+  --green-line:#b9dcc5;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; -webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0; background:var(--page); color:var(--ink); font-family:var(--sans); font-size:17px; line-height:1.6; -webkit-font-smoothing:antialiased}
+img,svg{max-width:100%}
+a{color:var(--green-deep); text-underline-offset:3px}
+a:hover{color:var(--ink)}
+:focus-visible{outline:2px solid var(--green); outline-offset:3px; border-radius:2px}
+code,.mono{font-family:var(--mono); font-size:.88em}
+.wrap{max-width:var(--wrap); margin:0 auto; padding-inline:24px}
+h1,h2,h3{font-family:var(--serif); font-weight:600; line-height:1.15; letter-spacing:-.01em; text-wrap:balance; margin:0}
+h1{font-size:clamp(2.3rem, 4.8vw, 3.9rem); letter-spacing:-.015em}
+h2{font-size:clamp(1.6rem, 3vw, 2.15rem)}
+h3{font-family:var(--sans); font-size:1.02rem; font-weight:600; letter-spacing:0; line-height:1.4}
+p{margin:0}
+.lead{font-size:1.12rem; color:var(--ink-2); max-width:36em}
+.muted{color:var(--ink-2)}
+.small{font-size:.9rem}
 
-  /* ---------- nav ---------- */
-  nav{
-    position:sticky; top:0; z-index:20; backdrop-filter:blur(10px);
-    background:rgba(11,15,20,0.85); border-bottom:1px solid var(--border);
-  }
-  nav .wrap{display:flex; align-items:center; justify-content:space-between; height:64px;}
-  .brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:1.05rem; color:var(--text); text-decoration:none;}
-  .brand .leaf{width:22px; height:22px; display:inline-block;}
-  nav .links{display:flex; gap:28px; align-items:center;}
-  nav .links a{color:var(--muted); text-decoration:none; font-size:0.92rem; font-weight:500;}
-  nav .links a:hover{color:var(--text);}
-  .btn{
-    display:inline-flex; align-items:center; gap:8px; border-radius:8px; font-weight:600;
-    padding:10px 18px; text-decoration:none; font-size:0.92rem; border:1px solid transparent; cursor:pointer;
-  }
-  .btn-primary{background:var(--accent2); color:#04231c;}
-  .btn-primary:hover{background:var(--accent);}
-  .btn-ghost{border-color:var(--border2); color:var(--text);}
-  .btn-ghost:hover{border-color:var(--accent-dim); background:var(--panel);}
+/* Buttons */
+.btn{display:inline-flex; align-items:center; gap:8px; font:500 .98rem/1 var(--sans); padding:13px 20px; border-radius:6px; text-decoration:none; border:1px solid transparent; transition:background .15s, border-color .15s, color .15s}
+.btn-primary{background:var(--green); color:#fff}
+.btn-primary:hover{background:var(--green-deep); color:#fff}
+.btn-quiet{border-color:var(--rule); color:var(--ink); background:var(--paper)}
+.btn-quiet:hover{border-color:var(--ink-3); color:var(--ink)}
 
-  /* ---------- hero ---------- */
-  header.hero{padding:96px 0 72px; border-bottom:1px solid var(--border);}
-  .eyebrow{
-    display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:0.78rem;
-    color:var(--accent); background:var(--accent-dim); border:1px solid #2c6a5c;
-    padding:5px 12px; border-radius:999px; margin-bottom:22px;
-  }
-  h1{font-size:2.7rem; line-height:1.15; margin:0 0 20px; font-weight:800; letter-spacing:-0.02em;}
-  h1 .accent{color:var(--accent);}
-  .lead{font-size:1.15rem; color:var(--muted); max-width:640px; margin:0 0 34px;}
-  .cta-row{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:56px;}
+/* Header */
+.top{position:sticky; top:0; z-index:10; background:rgba(251,249,244,.94); backdrop-filter:saturate(1.4) blur(8px); border-bottom:1px solid var(--rule)}
+.top .wrap{display:flex; align-items:center; gap:28px; height:64px}
+.brand{display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--ink); font-weight:600; font-size:1.08rem; letter-spacing:-.01em}
+.brand svg{width:22px; height:auto; display:block}
+.nav{display:flex; gap:24px; margin-left:auto; align-items:center}
+.nav a{color:var(--ink-2); text-decoration:none; font-size:.95rem}
+.nav a:hover{color:var(--ink)}
+.nav .btn{padding:9px 14px; font-size:.9rem; color:#fff}
+@media (max-width:820px){ .nav a.hide-sm{display:none} .top .wrap{gap:12px} }
 
-  .terminal{
-    background:var(--panel); border:1px solid var(--border); border-radius:12px; overflow:hidden;
-    box-shadow:0 20px 60px -20px rgba(0,0,0,0.6);
-  }
-  .terminal .bar{
-    display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid var(--border);
-    background:var(--panel2);
-  }
-  .terminal .dot{width:10px; height:10px; border-radius:50%;}
-  .terminal pre{
-    margin:0; padding:22px; font-family:var(--mono); font-size:0.82rem; line-height:1.65;
-    color:#c9d6e3; overflow-x:auto; white-space:pre;
-  }
-  .terminal .verdict-bad{color:var(--bad); font-weight:700;}
-  .terminal .num{color:var(--accent);}
-  .terminal .muted{color:var(--muted2);}
-  .terminal .lbl{color:#f0b849;}
+/* Hero */
+.hero{position:relative; padding-block:84px 96px; overflow:hidden}
+.hero::before{content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background-image:linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:28px 28px; background-position:center top;
+  -webkit-mask-image:radial-gradient(ellipse 90% 85% at 50% 30%, #000 45%, transparent 100%);
+          mask-image:radial-gradient(ellipse 90% 85% at 50% 30%, #000 45%, transparent 100%)}
+.hero > .wrap{position:relative; z-index:1}
+.eyebrow{display:inline-flex; align-items:center; gap:10px; font:500 .8rem/1 var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--green-deep)}
+.eyebrow i{display:inline-block; width:22px; height:1px; background:var(--green)}
+.hero .wrap{display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); gap:72px; align-items:center}
+.hero-copy{display:flex; flex-direction:column; gap:22px}
+.hero-actions{display:flex; flex-wrap:wrap; gap:12px; margin-top:6px}
+.works-with{font-size:.88rem; color:var(--ink-3); display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:4px}
+.works-with span{white-space:nowrap}
+@media (max-width:920px){ .hero .wrap{grid-template-columns:1fr; gap:40px} .hero{padding-block:48px 56px} }
 
-  /* ---------- sections ---------- */
-  section{padding:76px 0; border-bottom:1px solid var(--border);}
-  .kicker{font-family:var(--mono); font-size:0.78rem; color:var(--accent); letter-spacing:0.06em; text-transform:uppercase; margin:0 0 12px;}
-  h2{font-size:1.9rem; margin:0 0 18px; letter-spacing:-0.01em; font-weight:700;}
-  .section-lead{color:var(--muted); max-width:680px; font-size:1.02rem; margin:0 0 40px;}
+/* Report excerpt */
+.report{border:1px solid var(--rule); border-radius:10px; background:var(--paper); box-shadow:0 1px 0 rgba(21,26,22,.03), 0 18px 40px -24px rgba(21,26,22,.22); overflow:hidden}
+.report-head{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--rule); background:var(--band)}
+.report-head .mono{color:var(--ink-3); font-size:.8rem}
+.pill{font:600 .72rem/1 var(--mono); letter-spacing:.06em; padding:6px 9px; border-radius:4px; white-space:nowrap}
+.pill-bad{color:var(--red); background:var(--red-wash)}
+.pill-ok{color:var(--green-deep); background:var(--green-wash)}
+.report-body{padding:18px; display:flex; flex-direction:column; gap:16px}
+.report .where{font:500 .82rem/1.4 var(--mono); color:var(--ink-2)}
+.cmp{display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px 16px; align-items:baseline; font-family:var(--mono); font-size:.86rem}
+.cmp dt{color:var(--ink-3); font-size:.78rem}
+.cmp dd{margin:0; overflow-wrap:anywhere}
+.cmp .diff{background:var(--red-wash); color:var(--red); border-radius:2px; padding:0 1px}
+.cmp .type{color:var(--ink-3)}
+.witness{border-top:1px dashed var(--rule); padding-top:14px; display:grid; gap:10px}
+.witness-row{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+.out{border:1px solid var(--rule); border-radius:6px; padding:10px 12px}
+.out .k{font:.74rem/1.3 var(--mono); color:var(--ink-3); text-transform:uppercase; letter-spacing:.05em}
+.out .v{font:500 1.35rem/1.2 var(--mono); font-variant-numeric:tabular-nums; margin-top:4px}
+.report-foot{padding:12px 18px; border-top:1px solid var(--rule); font-size:.84rem; color:var(--ink-2); display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap}
+.report-foot strong{color:var(--ink); font-family:var(--mono); font-weight:500}
+.caption{font-size:.84rem; color:var(--ink-3); margin-top:12px}
 
-  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
-  .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
-  .card{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:26px;}
-  .card h3{margin:0 0 10px; font-size:1.05rem;}
-  .card p{margin:0; color:var(--muted); font-size:0.94rem;}
-  .step-num{
-    font-family:var(--mono); font-size:0.78rem; color:var(--accent); background:var(--accent-dim);
-    width:26px; height:26px; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;
-    margin-bottom:14px; border:1px solid #2c6a5c;
-  }
+/* Sections */
+section{padding-block:88px; border-top:1px solid var(--rule); scroll-margin-top:84px}
+.hero{scroll-margin-top:84px}
+section.band{background:var(--band)}
+.sec{display:grid; grid-template-columns:220px minmax(0,1fr); gap:48px}
+.sec-label{font:500 .78rem/1.5 var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--green-deep); padding-top:10px}
+.sec-body{display:flex; flex-direction:column; gap:28px; min-width:0}
+.sec-head{display:flex; flex-direction:column; gap:14px; max-width:44em}
+@media (max-width:820px){ .sec{grid-template-columns:1fr; gap:10px} section{padding-block:64px} .sec-label{padding-top:0} }
 
-  /* proof table */
-  .proof-table{width:100%; border-collapse:collapse; font-size:0.92rem;}
-  .proof-table th{text-align:left; color:var(--muted2); font-weight:600; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.04em; padding:0 16px 14px; border-bottom:1px solid var(--border);}
-  .proof-table td{padding:18px 16px; border-bottom:1px solid var(--border); vertical-align:top; color:var(--muted);}
-  .proof-table tr:last-child td{border-bottom:none;}
-  .proof-table td.case{color:var(--text); font-weight:600; width:26%;}
-  .proof-table .highlight{color:var(--accent); font-weight:700; font-family:var(--mono);}
+/* Number line figure */
+.figure{border:1px solid var(--rule); border-radius:10px; background:var(--paper); padding:24px 20px 18px}
+.figure-scroll{overflow-x:auto}
+.figure svg{display:block; width:100%; height:auto}
+.fig-sm{display:none!important}
+@media (max-width:620px){ .fig-lg{display:none!important} .fig-sm{display:block!important} .figure{padding:16px 10px 12px} }
+.figure svg text{font-family:var(--mono)}
+.causes{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; margin:0; padding:0; list-style:none}
+.causes li{border-top:2px solid var(--ink); padding-top:14px; display:flex; flex-direction:column; gap:6px}
+.causes p{color:var(--ink-2); font-size:.95rem}
+@media (max-width:820px){ .causes{grid-template-columns:1fr; gap:20px} }
 
-  /* trust layers */
-  .layer{display:flex; gap:18px; padding:24px 0; border-bottom:1px solid var(--border);}
-  .layer:last-child{border-bottom:none;}
-  .layer .num{
-    flex:none; width:38px; height:38px; border-radius:10px; background:var(--panel2); border:1px solid var(--border2);
-    display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; color:var(--accent);
-  }
-  .layer h4{margin:0 0 6px; font-size:1rem;}
-  .layer p{margin:0; color:var(--muted); font-size:0.94rem;}
+/* Results */
+.results{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px}
+.result{background:var(--paper); border:1px solid var(--rule); border-radius:10px; padding:24px; display:flex; flex-direction:column; gap:12px}
+.result p{color:var(--ink-2)}
+.result .code{font:.8rem/1.4 var(--mono); color:var(--ink-3); margin-top:auto; padding-top:10px}
+.third{font-size:.95rem; color:var(--ink-2); border-left:2px solid var(--rule); padding-left:16px; max-width:44em}
+@media (max-width:820px){ .results{grid-template-columns:1fr} }
 
-  /* supported matrix */
-  .matrix{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
-  .matrix .card ul{margin:0; padding-left:18px; color:var(--muted); font-size:0.92rem;}
-  .matrix .card li{margin-bottom:6px;}
-  .tag{
-    display:inline-block; font-family:var(--mono); font-size:0.72rem; background:var(--panel2);
-    border:1px solid var(--border2); color:var(--muted); padding:2px 8px; border-radius:6px; margin:2px 4px 2px 0;
-  }
+/* Cases */
+.headline-case{display:grid; grid-template-columns:auto auto minmax(0,1fr); gap:28px; align-items:center; padding:28px 0; border-top:1px solid var(--rule); border-bottom:1px solid var(--rule)}
+.num{display:flex; flex-direction:column; gap:4px}
+.num .v{font:500 clamp(2.4rem,5vw,3.4rem)/1 var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-.02em}
+.num .k{font-size:.82rem; color:var(--ink-3); max-width:12em}
+.num.proved .v{color:var(--red)}
+.headline-case p{color:var(--ink-2); font-size:.97rem}
+@media (max-width:820px){ .headline-case{grid-template-columns:1fr 1fr; gap:20px} .headline-case p{grid-column:1 / -1} }
+.table-scroll{overflow-x:auto}
+.full-report{border:1px solid var(--rule); border-radius:10px; background:var(--paper); overflow:hidden}
+.full-report summary{cursor:pointer; list-style:none; padding:16px 20px; font:600 .95rem/1.4 var(--sans); color:var(--ink); display:flex; align-items:center; gap:10px}
+.full-report summary::-webkit-details-marker{display:none}
+.full-report summary::before{content:"+"; font:500 1rem/1 var(--mono); color:var(--green-deep); width:18px}
+.full-report[open] summary::before{content:"\2212"}
+.full-report summary:hover{background:var(--band)}
+.fr-body{padding:0 20px 20px; display:flex; flex-direction:column; gap:14px; border-top:1px solid var(--rule)}
+.fr-note{font-size:.86rem; color:var(--ink-3); margin-top:14px}
+.fr-scroll{overflow-x:auto; overflow-y:auto; max-height:520px; background:var(--band); border:1px solid var(--rule); border-radius:8px}
+.fr-scroll pre{margin:0; padding:16px 18px; font:12.5px/1.55 var(--mono); color:var(--ink); white-space:pre; tab-size:2}
+table{width:100%; border-collapse:collapse; font-size:.95rem; min-width:560px}
+th{text-align:left; font:500 .76rem/1.4 var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); padding:0 16px 10px 0; border-bottom:1px solid var(--ink)}
+td{vertical-align:top; padding:16px 16px 16px 0; border-bottom:1px solid var(--rule); color:var(--ink-2)}
+td:first-child{color:var(--ink); font-weight:500; width:38%}
 
-  /* pricing */
-  .pricing-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
-  .price-card{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:30px 26px; display:flex; flex-direction:column;}
-  .price-card.highlight{border-color:#2c6a5c; background:linear-gradient(180deg, rgba(94,234,212,0.06), transparent 40%), var(--panel);}
-  .price-card .plan-name{font-weight:700; font-size:1.05rem; margin-bottom:6px;}
-  .price-card .plan-desc{color:var(--muted2); font-size:0.86rem; margin-bottom:20px; min-height:38px;}
-  .price-card .price{font-size:2rem; font-weight:800; margin-bottom:2px;}
-  .price-card .price .unit{font-size:0.95rem; color:var(--muted2); font-weight:500;}
-  .price-card .note{font-size:0.8rem; color:var(--muted2); margin-bottom:20px;}
-  .price-card ul{list-style:none; margin:0 0 24px; padding:0; flex:1;}
-  .price-card li{
-    font-size:0.88rem; color:var(--muted); padding:8px 0 8px 22px; position:relative; border-top:1px solid var(--border);
-  }
-  .price-card li:first-child{border-top:none;}
-  .price-card li:before{content:"✓"; position:absolute; left:0; color:var(--accent); font-weight:700;}
+/* Trust */
+.checks{list-style:none; margin:0; padding:0; display:flex; flex-direction:column}
+.checks li{display:grid; grid-template-columns:52px minmax(0,1fr); gap:16px; padding:22px 0; border-top:1px solid var(--rule)}
+.checks li:last-child{border-bottom:1px solid var(--rule)}
+.checks .n{font:500 .95rem/1.5 var(--mono); color:var(--green-deep)}
+.checks p{color:var(--ink-2); margin-top:6px; max-width:44em}
 
-  /* final cta */
-  .final-cta{text-align:center; padding:90px 0;}
-  .final-cta h2{font-size:2rem;}
-  .final-cta .section-lead{margin-left:auto; margin-right:auto; text-align:center;}
-  .email-box{
-    display:inline-flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--border2);
-    padding:14px 20px; border-radius:10px; font-family:var(--mono); font-size:0.98rem; margin-top:8px;
-  }
-  .email-box button{
-    background:none; border:none; color:var(--accent); cursor:pointer; font-family:var(--sans); font-weight:600; font-size:0.85rem;
-  }
+/* Coverage */
+.cover{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:32px}
+.cover dl{margin:0; display:flex; flex-direction:column}
+.cover dt{font-weight:600; padding-top:14px; border-top:1px solid var(--rule)}
+.cover dd{margin:4px 0 14px; color:var(--ink-2); font-size:.95rem}
+.cover h3{margin-bottom:10px; font:500 .78rem/1.5 var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3)}
+.refused{font-size:.95rem; color:var(--ink-2); background:var(--band); border-radius:8px; padding:16px 18px}
+section.band .refused{background:var(--paper)}
+.note{font-size:.95rem; color:var(--ink-2); background:var(--band); border-radius:8px; padding:18px 20px; display:flex; flex-direction:column; gap:6px; max-width:44em}
+.note h3{font:600 .95rem/1.3 var(--sans); color:var(--ink)}
+section.band .note{background:var(--paper)}
+.plan .tag.tag-soon{color:var(--ink-2); background:var(--band)}
+.plan-note{font-size:.88rem; color:var(--ink-3); margin-top:2px}
+@media (max-width:820px){ .cover{grid-template-columns:1fr; gap:8px} }
 
-  footer{padding:36px 0; text-align:center; color:var(--muted2); font-size:0.85rem;}
-  footer a{color:var(--muted); text-decoration:none;}
+/* Steps */
+.steps{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:28px; counter-reset:s}
+.steps li{display:flex; flex-direction:column; gap:8px}
+.steps .n{font:500 .8rem/1 var(--mono); color:var(--green-deep); letter-spacing:.06em}
+.steps p{color:var(--ink-2); font-size:.95rem}
+@media (max-width:820px){ .steps{grid-template-columns:1fr; gap:22px} }
 
-  @media (max-width:820px){
-    .grid-2, .grid-3, .matrix, .pricing-grid{grid-template-columns:1fr;}
-    h1{font-size:2.1rem;}
-    nav .links{display:none;}
-    header.hero{padding:56px 0 48px;}
-    section{padding:56px 0;}
-  }
+/* Pricing */
+.plans{display:flex; flex-direction:column; border-top:1px solid var(--ink)}
+.plan{display:grid; grid-template-columns:230px minmax(0,1fr) 190px; gap:28px; align-items:start; padding:26px 0; border-bottom:1px solid var(--rule)}
+.plan h3{font-family:var(--serif); font-size:1.3rem; font-weight:600}
+.plan .tag{display:inline-block; margin-top:8px; font:500 .72rem/1 var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--green-deep); background:var(--green-wash); padding:5px 8px; border-radius:4px}
+.plan ul{margin:0; padding-left:18px; color:var(--ink-2); font-size:.95rem; display:flex; flex-direction:column; gap:4px}
+.plan .price{text-align:right; display:flex; flex-direction:column; gap:10px; align-items:flex-end}
+.plan .amount{font:500 1.7rem/1 var(--mono); font-variant-numeric:tabular-nums; white-space:nowrap}
+.plan .amount .was{font-size:.6em; font-weight:400; color:var(--ink-3); text-decoration:line-through; margin-right:7px}
+.plan .lock{font-size:.82rem; color:var(--ink-3)}
+.plan .amount small{font:400 .85rem var(--sans); color:var(--ink-3)}
+.plan .btn{padding:10px 14px; font-size:.9rem}
+@media (max-width:820px){ .plan{grid-template-columns:1fr; gap:14px} .plan .price{text-align:left; align-items:flex-start} }
+
+/* Contact */
+.contact{display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:48px; align-items:center}
+.mailbox{border:1px solid var(--rule); border-radius:10px; background:var(--paper); padding:22px; display:flex; flex-direction:column; gap:14px}
+.mail-row{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.mail-addr{font:500 1.15rem/1.3 var(--mono); user-select:all; overflow-wrap:anywhere}
+.copy{font:500 .82rem/1 var(--sans); border:1px solid var(--rule); background:var(--paper); color:var(--ink); padding:8px 11px; border-radius:5px; cursor:pointer}
+.copy:hover{border-color:var(--ink-3)}
+.mailbox ul{margin:0; padding-left:18px; color:var(--ink-2); font-size:.93rem; display:flex; flex-direction:column; gap:4px}
+@media (max-width:820px){ .contact{grid-template-columns:1fr; gap:28px} }
+
+
+/* Demo: one input through both models */
+.demo{background:#f2f0e6; position:relative; overflow:hidden}
+.demo::before{content:""; position:absolute; inset:0; pointer-events:none;
+  background-image:linear-gradient(rgba(27,28,22,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(27,28,22,.045) 1px, transparent 1px);
+  background-size:28px 28px}
+.demo .wrap{position:relative}
+.inputs{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+.inputs .k{font:500 .78rem/1 var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); margin-right:4px}
+.inp{font:500 .9rem/1 var(--mono); color:var(--ink); background:var(--paper); border:1px solid #d6d3c4; padding:10px 13px; border-radius:6px; cursor:pointer; transition:border-color .15s, background .15s, color .15s}
+.inp:hover{border-color:var(--green)}
+.inp[aria-pressed="true"]{background:var(--ink); color:#fff; border-color:var(--ink)}
+.trees{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px}
+.tree-card{border:1px solid #dcd9cb; border-radius:10px; background:var(--paper); padding:16px 16px 10px; box-shadow:0 14px 34px -26px rgba(21,26,22,.35)}
+.tree-card header{display:flex; justify-content:space-between; align-items:baseline; gap:10px; font:500 .8rem/1.3 var(--mono); color:var(--ink-3); letter-spacing:.04em}
+.tree-card header b{color:var(--ink); font-weight:600; letter-spacing:.06em; text-transform:uppercase}
+.tree-scroll{overflow-x:auto}
+.tree{display:block; width:100%; min-width:380px; height:auto; margin-top:8px}
+.tree text{font-family:var(--mono)}
+.tree .edge{stroke:#d8d5c7; stroke-width:1.5; fill:none; transition:stroke .25s}
+.tree .box{fill:#f8f6ef; stroke:#dcd8ca; stroke-width:1.2; transition:fill .25s, stroke .25s}
+.tree .t1{fill:var(--ink); font-size:12.5px}
+.tree .t2{fill:var(--ink-3); font-size:10.5px}
+.tree .yn{fill:#8a958c; font-size:10px}
+.tree .leaf .t1{font-size:13px; font-weight:500}
+.tree .on .box{stroke:var(--green); fill:var(--green-wash)}
+.tree .edge.on{stroke:var(--green); stroke-width:2.5}
+.tree .hit.bad .box{stroke:var(--red); fill:var(--red-wash); stroke-width:2}
+.tree .hit.bad .t1{fill:var(--red)}
+.tree .hit.good .box{stroke:var(--green); fill:var(--green-wash); stroke-width:2}
+.tree .hit.good .t1{fill:var(--green-deep)}
+.tree .root .diffd{fill:var(--red)}
+.verdict{display:flex; flex-wrap:wrap; align-items:center; gap:14px 22px; border:1px solid #dcd9cb; border-radius:10px; padding:16px 18px; background:var(--paper)}
+.verdict .pill{font-size:.78rem}
+.verdict .msg{color:var(--ink-2); font-size:.98rem}
+.verdict .msg b{color:var(--ink); font-family:var(--mono); font-weight:500}
+.demo .note{font-size:.86rem; color:var(--ink-3); max-width:52em}
+@media (max-width:900px){ .trees{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:600px){ .tree{min-width:0} .tree-card{padding:12px 10px 6px} }
+@media (prefers-reduced-motion: reduce){ .tree .edge, .tree .box{transition:none} }
+
+/* Bars: tutorial test set vs proven maximum */
+.bars{display:flex; flex-direction:column; gap:16px; padding:26px 0 8px}
+.bar-row{display:grid; grid-template-columns:230px minmax(0,1fr); gap:20px; align-items:center}
+.bar-row .lbl{font-size:.92rem; color:var(--ink-2); line-height:1.35}
+.bar-row .lbl b{display:block; color:var(--ink); font-weight:500}
+.track{position:relative; height:34px}
+.fill{height:100%; border-radius:3px; display:flex; align-items:center; justify-content:flex-end; padding-right:10px; font:500 .95rem/1 var(--mono); font-variant-numeric:tabular-nums; min-width:64px}
+.fill.seen{background:#dcd7c9; color:var(--ink)}
+.fill.proved{background:var(--red); color:#fff}
+.fill.nan{background:repeating-linear-gradient(135deg, var(--red) 0 6px, #c9463a 6px 12px); color:#fff}
+.axis{display:grid; grid-template-columns:230px minmax(0,1fr); gap:20px}
+.axis .ticks{position:relative; height:22px; border-top:1px solid var(--rule); font:.74rem/1 var(--mono); color:var(--ink-3)}
+.axis .ticks span{position:absolute; top:6px; transform:translateX(-50%)}
+.axis .ticks span:first-child{transform:none}
+.case-text{color:var(--ink-2); font-size:.97rem; max-width:52em}
+@media (max-width:820px){ .bar-row, .axis{grid-template-columns:1fr; gap:6px} .axis > div:first-child{display:none} }
+
+/* Big footer */
+.foot{background:var(--band); border-top:1px solid var(--rule); padding-block:56px 28px}
+.foot-grid{display:grid; grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr)); gap:40px}
+.foot-brand{display:flex; flex-direction:column; gap:14px; max-width:26em}
+.foot-brand .brand{font-size:1.2rem}
+.foot-brand .brand svg{width:26px}
+.foot-brand p{color:var(--ink-2); font-size:.95rem}
+.foot h4{margin:0 0 12px; font:500 .76rem/1.4 var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3)}
+.foot ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; font-size:.95rem}
+.foot a{color:var(--ink-2); text-decoration:none}
+.foot a:hover{color:var(--ink)}
+.foot-bottom{margin-top:44px; padding-top:20px; border-top:1px solid var(--rule); display:flex; flex-wrap:wrap; gap:8px 24px; justify-content:space-between; font-size:.85rem; color:var(--ink-3)}
+.foot-bottom .eq{font-family:var(--mono)}
+@media (max-width:820px){ .foot-grid{grid-template-columns:1fr 1fr} .foot-brand{grid-column:1 / -1} }
+
 </style>
 </head>
 <body>
 
-<nav>
+<header class="top">
   <div class="wrap">
-    <a class="brand" href="#top">
-      <svg class="leaf" viewBox="0 0 24 24" fill="none"><path d="M4 13c0-5 4-9 9-9h7v7c0 5-4 9-9 9H4v-7z" stroke="#5eead4" stroke-width="1.6" stroke-linejoin="round"/><path d="M20 4L9 15" stroke="#5eead4" stroke-width="1.6" stroke-linecap="round"/></svg>
-      leafparity
-    </a>
-    <div class="links">
-      <a href="#proof">Proof</a>
-      <a href="#trust">Trust</a>
-      <a href="#supported">Supported</a>
-      <a href="#pricing">Pricing</a>
-    </div>
-    <a class="btn btn-ghost" href="https://github.com/Leafparity" target="_blank" rel="noopener">GitHub →</a>
-  </div>
-</nav>
-
-<header class="hero" id="top">
-  <div class="wrap">
-    <span class="eyebrow">● for teams shipping XGBoost / LightGBM / scikit-learn models as ONNX</span>
-    <h1>Your model was converted to ONNX.<br>Is it still <span class="accent">the same model?</span></h1>
-    <p class="lead">
-      Testing on a sample can't tell you. Conversion bugs live in slivers of the input
-      space one float step wide — around a threshold, at exactly zero, or only for
-      missing values. Leafparity doesn't sample: it reads both models and proves, for
-      every possible input, whether they agree — or shows you exactly where they don't.
-    </p>
-    <div class="cta-row">
-      <a class="btn btn-primary" href="mailto:hello@leafparity.com">Get a certificate for your model →</a>
-      <a class="btn btn-ghost" href="#proof">See a real bug we caught</a>
-    </div>
-
-    <div class="terminal">
-      <div class="bar">
-        <span class="dot" style="background:#f87171"></span>
-        <span class="dot" style="background:#f0b849"></span>
-        <span class="dot" style="background:#4ade80"></span>
-        <span class="mono" style="color:var(--muted2); font-size:0.78rem; margin-left:8px;">leafparity check model.txt model.onnx</span>
-      </div>
-      <pre>$ leafparity check model.txt model.onnx --background sample.csv
-
-<span class="verdict-bad">VERDICT: NOT EQUIVALENT</span>
-Not equivalent: <span class="num">4</span> distinct problem(s) at <span class="num">420</span> place(s) in the trees. For some
-    inputs the raw outputs differ by <span class="num">290.952</span> (proven to be the largest possible
-    difference).
-
-<span class="lbl">#1  zero / near-zero values are handled differently</span>  [feature 'age']
-    occurs at 30 split node(s) in 29 tree(s); largest effect of a single tree: 23.02
-    example - tree 3:
-      original  node 0: x &lt;= -17.066402760988257 (double), missing_type=Zero, default -> left
-      converted node 0: x &lt;= -17.066402435302734 (float32), missing -> true branch
-      inputs routed differently here: [-1.0000000180025095e-35, 1.0000000180025095e-35]
-    witness: {age=0.0, income=114.41658720372287, ...}
-      original predicts -196.355; converted predicts 57.9331  <span class="muted">(verified by running both real runtimes)</span></pre>
-    </div>
+    <a class="brand" href="#" aria-label="Leafparity home"><svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="-5 -5 110 154" fill="none" stroke="#0c9b48" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M50 1 C69 18 97 44 97 76 C97 104 74 124 50 142 C26 124 3 104 3 76 C3 44 31 18 50 1 Z" stroke-width="6"/>
+  <path d="M50 3 V55" stroke-width="4.8" stroke-linecap="butt"/>
+  <path d="M26 41 L39 52 M74 41 L61 52" stroke-width="4.8"/>
+  <path d="M34 64 H66 M34 73 H66 M34 82 H66" stroke-width="4.8" stroke-linecap="butt"/>
+  <path d="M5 81 L37 104 M95 81 L63 104" stroke-width="4.8"/>
+  <path d="M50 93 V126 H61" stroke-width="4.8"/>
+</svg><span>Leafparity</span></a>
+    <nav class="nav" aria-label="Main">
+      <a class="hide-sm" href="#problem">How it works</a>
+      <a class="hide-sm" href="#cases">Real cases</a>
+      <a class="hide-sm" href="#pricing">Pricing</a>
+      <a class="hide-sm" href="https://github.com/Leafparity/leafparity" target="_blank" rel="noopener">GitHub</a>
+      <a class="btn btn-primary" href="#contact">Request a check</a>
+    </nav>
   </div>
 </header>
 
-<section id="how">
+<main>
+<div class="hero">
   <div class="wrap">
-    <p class="kicker">How it works</p>
-    <h2>Exact, not sampled.</h2>
-    <p class="section-lead">
-      Leafparity reproduces each runtime's exact arithmetic — every cast, preprocessing
-      step, comparison operator and missing-value rule — then walks both models together
-      over the whole input space at floating-point precision. There are only two outcomes.
-    </p>
-    <div class="grid-2">
-      <div class="card">
-        <span class="step-num">✓</span>
-        <h3 style="color:var(--good)">EQUIVALENT</h3>
-        <p>A proof that for every possible input, the two models reach corresponding leaves.
-        Outputs can differ only by a stated, proven floating-point rounding allowance — not
-        an estimate, a bound.</p>
+    <div class="hero-copy">
+      <span class="eyebrow"><i></i>Equivalence proofs for tree models</span>
+      <h1>Is your ONNX model the same model you trained?</h1>
+      <p class="lead">Leafparity compares an XGBoost, LightGBM or scikit-learn tree model with its ONNX conversion over every possible input. It either proves the two always agree, or shows you exactly which inputs get a different answer.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#contact">Request a check</a>
+        <a class="btn btn-quiet" href="#problem">See how it works</a>
       </div>
-      <div class="card">
-        <span class="step-num" style="color:var(--bad); background:var(--bad-dim); border-color:#5c2c2c;">✕</span>
-        <h3 style="color:var(--bad)">NOT EQUIVALENT</h3>
-        <p>Every place in every tree where the models disagree, the exact set of inputs
-        affected, and a concrete witness input for each problem — verified by running
-        both real runtimes so you can check it yourself.</p>
-      </div>
+      <div class="works-with"><span>XGBoost</span><span>LightGBM</span><span>scikit-learn</span><span>→ ONNX via skl2onnx or onnxmltools</span></div>
     </div>
-  </div>
-</section>
 
-<section id="proof">
-  <div class="wrap">
-    <p class="kicker">Real, reproduced bugs</p>
-    <h2>What it catches</h2>
-    <p class="section-lead">Reproduced in the shipped <code>examples/</code> folder — not hypothetical.</p>
-    <div class="card" style="padding:0; overflow-x:auto;">
-      <table class="proof-table">
-        <tr>
-          <th>Case</th>
-          <th>What leafparity reports</th>
-        </tr>
-        <tr>
-          <td class="case">The sklearn-onnx docs' own "float switch" example (StandardScaler + DecisionTreeRegressor)</td>
-          <td>Their own test set shows a largest error of ~190. Leafparity proves the largest
-          <em>possible</em> error is <span class="highlight">556</span> (721 with missing values), shows exactly where
-          each discrepancy sits, and certifies their <code>CastTransformer</code> fix as EQUIVALENT for
-          float32 — but proves the fix does <em>not</em> hold for float64 inputs.</td>
-        </tr>
-        <tr>
-          <td class="case">LightGBM with <code>zero_as_missing=True</code>, converted via onnxmltools</td>
-          <td>The converter silently ignores LightGBM's <code>missing_type=Zero</code> rule, so an input
-          of exactly <code>0.0</code> takes a different path in every tree. Raw scores differ by up to
-          <span class="highlight">~290</span>.</td>
-        </tr>
-        <tr>
-          <td class="case">scikit-learn trees (≥1.3) receiving NaN, converted via skl2onnx</td>
-          <td>scikit-learn routes NaN using <code>missing_go_to_left</code>; the converted model sends
-          NaN the <em>other</em> way at the affected nodes — a silent class flip.</td>
-        </tr>
-        <tr>
-          <td class="case">LightGBM (double thresholds) served through float32 ONNX</td>
-          <td>Narrow bands of float64 input next to thresholds route differently at almost every
-          node. Leafparity lists them, bounds their effect, and tells you whether your actual
-          float32 data can even reach them.</td>
-        </tr>
-      </table>
-    </div>
-  </div>
-</section>
-
-<section id="trust">
-  <div class="wrap">
-    <p class="kicker">Why trust the verdict</p>
-    <h2>It checks its own work, three times.</h2>
-    <p class="section-lead">The report shows the result of every layer below — nothing is asserted without evidence.</p>
     <div>
-      <div class="layer">
-        <div class="num">1</div>
-        <div>
-          <h4>Self-check, before any analysis</h4>
-          <p>Inputs are constructed to reach every split node and sit exactly on — and one float
-          step either side of — its decision boundary, including zeros and NaN. They run through
-          the real libraries and through leafparity's exact model. If a single tree decision
-          disagrees, leafparity refuses to certify rather than guess.</p>
+      <div class="report" role="figure" aria-label="Excerpt from a Leafparity report">
+        <div class="report-head">
+          <span class="mono">leafparity check model.txt model.onnx</span>
+          <span class="pill pill-bad">NOT EQUIVALENT</span>
+        </div>
+        <div class="report-body">
+          <div class="where">Tree 2 · node 0 · feature <b>Column_0</b></div>
+          <dl class="cmp">
+            <dt>original</dt>
+            <dd>x ≤ -17.066402<span class="diff">760988257</span> <span class="type">double</span></dd>
+            <dt>converted</dt>
+            <dd>x ≤ -17.066402<span class="diff">435302734</span> <span class="type">float32</span></dd>
+            <dt>missing</dt>
+            <dd>original treats 0 as missing (<code>zero_as_missing</code>), converted evaluates it as an ordinary number</dd>
+          </dl>
+          <div class="witness">
+            <div class="where">Witness input: Column_0 = 0.0</div>
+            <div class="witness-row">
+              <div class="out"><div class="k">Original predicts</div><div class="v">-198.276</div></div>
+              <div class="out"><div class="k">Converted predicts</div><div class="v">54.7198</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="report-foot">
+          <span>4 problems at 699 places in the trees</span>
+          <span>Largest possible difference <strong>295.027</strong></span>
         </div>
       </div>
-      <div class="layer">
-        <div class="num">2</div>
-        <div>
-          <h4>Witness verification</h4>
-          <p>Every reported problem, and the worst case, comes with an input that has actually
-          been run through both real runtimes. The report states whether the observed
-          difference matches the predicted one.</p>
-        </div>
+      <p class="caption">From a real report: LightGBM with <code>zero_as_missing=True</code>, converted with onnxmltools. Both predictions were produced by the real runtimes.</p>
+    </div>
+  </div>
+</div>
+
+
+<section class="demo" id="demo">
+  <div class="wrap sec">
+    <div class="sec-label">See it happen</div>
+    <div class="sec-body">
+      <div class="sec-head">
+        <h2>One input, two models, two different answers.</h2>
+        <p class="lead">Pick an input and follow it through the original tree and the converted one. Most inputs take the same path. A few don't, and those are the ones Leafparity finds.</p>
       </div>
-      <div class="layer">
-        <div class="num">3</div>
-        <div>
-          <h4>Independent cross-check</h4>
-          <p>Thousands of adversarial and boundary inputs run through both real runtimes without
-          using the analysis engine at all. Every observed difference must fall within the
-          proven bound, or the certificate is refused.</p>
-        </div>
+      <div class="inputs" role="group" aria-label="Choose an input">
+        <span class="k">Input</span>
+        <button class="inp" type="button" data-i="0" aria-pressed="true">age = 34</button>
+        <button class="inp" type="button" data-i="1" aria-pressed="false">age = -40</button>
+        <button class="inp" type="button" data-i="2" aria-pressed="false">age = -17.0664025</button>
+        <button class="inp" type="button" data-i="3" aria-pressed="false">age = 0.0</button>
+        <span class="k" style="margin-left:6px">income = 60</span>
       </div>
+      <div class="trees">
+        <div class="tree-card"><header><b>Original</b><span>LightGBM · double</span></header><div class="tree-scroll"><svg class="tree" id="tree-a" viewBox="0 0 440 290" role="img" aria-label="Original model tree"></svg></div></div>
+        <div class="tree-card"><header><b>Converted</b><span>ONNX · float32</span></header><div class="tree-scroll"><svg class="tree" id="tree-b" viewBox="0 0 440 290" role="img" aria-label="Converted model tree"></svg></div></div>
+      </div>
+      <div class="verdict" aria-live="polite"><span class="pill pill-ok" id="v-pill">SAME LEAF</span><span class="msg" id="v-msg">Both models predict <b>+8.1</b>.</span></div>
+      <p class="note">A simplified one-tree illustration of the case in the report above. Leafparity doesn't try inputs one by one like this: it analyses every split, so it finds all such inputs, including ones nobody would think to test.</p>
     </div>
   </div>
 </section>
 
-<section id="supported">
-  <div class="wrap">
-    <p class="kicker">Coverage</p>
-    <h2>Supported today</h2>
-    <p class="section-lead">Not yet supported constructs are refused outright, never guessed at.</p>
-    <div class="matrix">
-      <div class="card">
-        <h3>Original model</h3>
-        <ul>
-          <li>XGBoost — <code>gbtree</code>, numerical splits; regression, binary, multiclass</li>
-          <li>LightGBM — gbdt / rf, all missing-value modes (None / Zero / NaN)</li>
-          <li>scikit-learn — DecisionTree, ExtraTree, RandomForest, ExtraTrees, GradientBoosting</li>
-          <li>Optional Pipeline preprocessing: StandardScaler, MinMaxScaler, MaxAbsScaler, RobustScaler, CastTransformer</li>
-        </ul>
+<section id="problem">
+  <div class="wrap sec">
+    <div class="sec-label">The problem</div>
+    <div class="sec-body">
+      <div class="sec-head">
+        <h2>Test sets rarely hit the difference. Production traffic does.</h2>
+        <p class="lead">When a conversion goes wrong, it goes wrong in slivers of the input space one float step wide: around a threshold, at exactly zero, or only for missing values. Comparing predictions on held-out data almost never lands there.</p>
       </div>
-      <div class="card">
-        <h3>Converted model</h3>
-        <ul>
-          <li>ONNX <code>ai.onnx.ml</code> TreeEnsembleRegressor / TreeEnsembleClassifier (opset ≤ 3)</li>
-          <li>Optional Cast / Scaler / Add / Sub / Mul / Div preprocessing by constants</li>
-          <li>Float or double input, as produced by <code>skl2onnx</code> and <code>onnxmltools</code></li>
-        </ul>
-        <div style="margin-top:16px;">
-          <span class="tag">not yet: categorical splits</span>
-          <span class="tag">XGBoost dart</span>
-          <span class="tag">LightGBM linear trees</span>
-          <span class="tag">opset-5 TreeEnsemble</span>
-          <span class="tag">PMML</span>
+
+      <div class="figure">
+        <div class="figure-scroll">
+          <svg class="fig-lg" viewBox="0 0 760 170" role="img" aria-label="A number line around the threshold. The original model's threshold and the converted model's threshold are a tiny distance apart. Inputs between them take a different branch in each model.">
+            <rect x="0" y="0" width="760" height="170" fill="#fffdf8"/>
+            <rect x="330" y="46" width="130" height="58" fill="#fcefed"/>
+            <line x1="20" y1="75" x2="740" y2="75" stroke="#1b1c16" stroke-width="1.5"/>
+            <line x1="330" y1="46" x2="330" y2="104" stroke="#1b1c16" stroke-width="2"/>
+            <line x1="460" y1="46" x2="460" y2="104" stroke="#0c9b48" stroke-width="2"/>
+            <text x="330" y="30" text-anchor="middle" font-size="12" fill="#1b1c16">original  -17.066402760988257</text>
+            <text x="460" y="126" text-anchor="middle" font-size="12" fill="#087a39">converted  -17.066402435302734</text>
+            <text x="395" y="70" text-anchor="middle" font-size="12" font-weight="500" fill="#b42318">different</text>
+            <text x="395" y="88" text-anchor="middle" font-size="12" font-weight="500" fill="#b42318">branches</text>
+            <text x="160" y="64" text-anchor="middle" font-size="12" fill="#4d4e44">both models go left</text>
+            <text x="610" y="64" text-anchor="middle" font-size="12" fill="#4d4e44">both models go right</text>
+            <text x="380" y="158" text-anchor="middle" font-size="11" fill="#75756a">gap between the thresholds ≈ 0.00000033 (drawn much wider than scale)</text>
+          </svg>
+          <svg class="fig-sm" viewBox="0 0 340 196" aria-hidden="true">
+            <rect x="0" y="0" width="340" height="196" fill="#fffdf8"/>
+            <rect x="130" y="72" width="80" height="56" fill="#fcefed"/>
+            <line x1="8" y1="100" x2="332" y2="100" stroke="#1b1c16" stroke-width="1.5"/>
+            <line x1="130" y1="72" x2="130" y2="128" stroke="#1b1c16" stroke-width="2"/>
+            <line x1="210" y1="72" x2="210" y2="128" stroke="#0c9b48" stroke-width="2"/>
+            <text x="130" y="42" text-anchor="middle" font-size="11" fill="#1b1c16">original</text>
+            <text x="130" y="58" text-anchor="middle" font-size="11" fill="#1b1c16">-17.066402760988257</text>
+            <text x="210" y="146" text-anchor="middle" font-size="11" fill="#087a39">converted</text>
+            <text x="210" y="162" text-anchor="middle" font-size="11" fill="#087a39">-17.066402435302734</text>
+            <text x="170" y="95" text-anchor="middle" font-size="11" font-weight="500" fill="#b42318">different</text>
+            <text x="170" y="113" text-anchor="middle" font-size="11" font-weight="500" fill="#b42318">branches</text>
+            <text x="64" y="90" text-anchor="middle" font-size="11" fill="#4d4e44">both left</text>
+            <text x="276" y="90" text-anchor="middle" font-size="11" fill="#4d4e44">both right</text>
+            <text x="170" y="188" text-anchor="middle" font-size="10" fill="#75756a">gap ≈ 0.00000033, drawn wider than scale</text>
+          </svg>
         </div>
+      </div>
+
+      <ul class="causes">
+        <li><h3>Rounded thresholds</h3><p>A double threshold stored as float32 moves slightly. Inputs in the gap take a different branch.</p></li>
+        <li><h3>Zero treated as missing</h3><p>LightGBM's <code>missing_type=Zero</code> is ignored by the converter, so an exact 0.0 goes the other way.</p></li>
+        <li><h3>NaN routed differently</h3><p>scikit-learn decides per node where NaN goes. The converted model sends it the other way at some of those nodes.</p></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="results">
+  <div class="wrap sec">
+    <div class="sec-label">What you get</div>
+    <div class="sec-body">
+      <div class="sec-head">
+        <h2>A proof, or the exact inputs that break it.</h2>
+        <p class="lead">Leafparity doesn't sample. It reproduces each runtime's arithmetic, including every cast, preprocessing step, comparison and missing-value rule, and walks both models together through every tree.</p>
+      </div>
+      <div class="results">
+        <div class="result">
+          <span class="pill pill-ok" style="align-self:flex-start">EQUIVALENT</span>
+          <h3>Proof that the models agree on every input</h3>
+          <p>For every possible input, both models reach corresponding leaves. Outputs can differ only by the stated floating-point rounding allowance.</p>
+          <div class="code">exit code 0</div>
+        </div>
+        <div class="result">
+          <span class="pill pill-bad" style="align-self:flex-start">NOT EQUIVALENT</span>
+          <h3>Every disagreement, with a witness</h3>
+          <p>Each place in each tree where the models differ, the exact set of affected inputs, and a concrete input you can run yourself. You also get the largest difference found and a proven upper bound.</p>
+          <div class="code">exit code 1</div>
+        </div>
+      </div>
+      <p class="third">If a model uses something Leafparity can't analyse exactly, it says so and stops (exit code 2). It never guesses. The exit codes let you use it as a CI step.</p>
+    </div>
+  </div>
+</section>
+
+<section id="cases">
+  <div class="wrap sec">
+    <div class="sec-label">Real cases</div>
+    <div class="sec-body">
+      <div class="sec-head">
+        <h2>Found in real conversions, including the official tutorial.</h2>
+      </div>
+      <div>
+        <div class="bars" role="img" aria-label="Bar chart: the tutorial's test set shows a largest error of 190. Leafparity proves the largest possible error is 556, or 721 with missing values.">
+          <div class="bar-row"><div class="lbl"><b>Tutorial's test set</b>largest error observed</div><div class="track"><div class="fill seen" style="width:21.6%">156</div></div></div>
+          <div class="bar-row"><div class="lbl"><b>Leafparity</b>largest possible error, proven</div><div class="track"><div class="fill proved" style="width:77.1%">556</div></div></div>
+          <div class="bar-row"><div class="lbl"><b>Leafparity, with missing values</b>largest possible error, proven</div><div class="track"><div class="fill nan" style="width:100%">721</div></div></div>
+        </div>
+        <div class="axis" aria-hidden="true"><div></div><div class="ticks"><span style="left:0">0</span><span style="left:27.74%">200</span><span style="left:55.48%">400</span><span style="left:83.22%">600</span></div></div>
+      </div>
+      <p class="case-text">This is the sklearn-onnx documentation's own "Issues when switching to float" example (StandardScaler and a decision tree). Its test set suggests the error tops out around 156. The real maximum, proven by walking every split, is 556 — more than three and a half times higher. Leafparity also certifies the tutorial's <code>CastTransformer</code> fix as equivalent for float32 inputs without NaN, and shows the fix does not hold for float64 inputs. <a href="#full-report">See the complete report below.</a></p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Setup</th><th>What Leafparity reports</th></tr></thead>
+          <tbody>
+            <tr><td>LightGBM with <code>zero_as_missing=True</code>, converted with onnxmltools</td><td>An input of exactly 0.0 takes a different path in every tree. Raw scores differ by up to 295.</td></tr>
+            <tr><td>scikit-learn trees (1.3 and later) that receive NaN, converted with skl2onnx</td><td>scikit-learn decides per node where NaN goes; the converted model sends it the other way at some of those nodes. The predicted class flips for some inputs, verified on both runtimes.</td></tr>
+            <tr><td>LightGBM with double thresholds, served through float32 ONNX</td><td>Narrow bands of float64 inputs next to thresholds are routed differently at almost every node. With <code>--input-dtype float32</code> it tells you whether your float32 data can reach them at all.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">Each case is reproduced in the <a href="https://github.com/Leafparity/leafparity/tree/main/examples" target="_blank" rel="noopener">examples folder</a> of the repository.</p>
+
+      <details class="full-report" id="full-report">
+        <summary>View the complete, unedited report for this case</summary>
+        <div class="fr-body">
+          <p class="fr-note">Exactly what <code>examples/01_sklearn_onnx_float_tutorial.py</code> prints when you run it yourself &mdash; nothing shortened or reworded. The bar chart above and the hero example both come from a report like this one.</p>
+          <div class="fr-scroll"><pre>Test-set comparison (what the tutorial does): max |difference| = 155.52
+
+==============================================================================
+leafparity 0.1.0 - equivalence report
+==============================================================================
+Original : scikit-learn StandardScaler -&gt; DecisionTreeRegressor, 1 trees
+Converted: ONNX TreeEnsembleRegressor (1 trees, post_transform=NONE, input float32)
+Domain   : every float32 input vector (10 features), no missing values
+
+VERDICT: NOT EQUIVALENT
+Not equivalent: 10 distinct problem(s) at 362 place(s) in the trees. For some
+    inputs the raw outputs differ by 555.835 (proven to be the largest
+    possible difference).
+
+Self-check (exact model vs. real runtimes; inputs constructed to reach every split node, on and beside its boundary):
+  original : 5620 tree decisions, 0 mismatches
+  converted: 5620 tree decisions, 0 mismatches
+Examined : 10754 joint regions; 615 of 905 matched split nodes have different exact rules
+Cross-check: 4000 boundary inputs run through both real runtimes, max |raw diff| 236.29, all within proven bounds
+
+PROBLEMS (largest effect first; 10 problem(s), 362 place(s) in the trees)
+------------------------------------------------------------------------------
+#1  a narrow band of values next to a threshold is routed differently
+    (threshold or input rounded to lower precision)  [feature &#x27;f3&#x27;]
+    occurs at 72 split node(s) in 1 tree(s); largest effect of a single tree: 555.835
+    example - tree 0:
+      original  node 1442: float32(x) &lt;= -1.0622187554836273 (double) -&gt; left, missing -&gt; right
+      converted node 1442: x &lt;= -1.0622187852859497 (float32) -&gt; true branch, missing -&gt; false branch
+      inputs routed differently here: [-8.5, -8.5] (1 representable value)
+    witness: {f3=-8.5, f0=1.0, f1=5.0, f2=-2.0, f4=4.0, f5=-26.0, f6=135.0, f7=-114.0, ... (2 more)}
+      original predicts 413.213; converted predicts -142.622  (verified by running both real runtimes)
+
+#2  a narrow band of values next to a threshold is routed differently
+    (threshold or input rounded to lower precision)  [feature &#x27;f8&#x27;]
+    occurs at 96 split node(s) in 1 tree(s); largest effect of a single tree: 493.681
+    example - tree 0:
+      original  node 538: float32(x) &lt;= -1.0806240439414978 (double) -&gt; left, missing -&gt; right
+      converted node 538: x &lt;= -1.0806241035461426 (float32) -&gt; true branch, missing -&gt; false branch
+      inputs routed differently here: [-278.0, -278.0] (1 representable value)
+    witness: {f8=-278.0, f0=2.0, f1=-2.0, f2=-3.0, f3=-15.0, f4=-24.0, f5=47.0, f6=204.0, ... (2 more)}
+      original predicts -383.305; converted predicts 110.376  (verified by running both real runtimes)
+
+WORST CASE over the whole domain (raw output = prediction)
+------------------------------------------------------------------------------
+  output 0, original - converted: attained 555.835, guaranteed &lt;= 555.835 (proven maximum)
+  output 0, converted - original: attained 493.681, guaranteed &lt;= 493.681 (proven maximum)
+  input attaining the largest difference:
+    witness: {f0=0.0, f1=3.509999990463257, f2=0.0, f3=-8.5, f4=0.0, f5=-20.5, f6=135.0, f7=1.5, ... (2 more)}
+      original predicts 413.213; converted predicts -142.622  (verified by running both real runtimes)
+
+
+NOTES
+  - preprocessing modelled exactly: StandardScaler
+
+Completed in 0.8s.
+Tutorial&#x27;s fix, float32 inputs, missing values excluded: EQUIVALENT - Equivalent on the whole analysed input domain: the two models take corresponding paths for every possible input, and their raw outputs differ by at most 0.000111 (floating-point rounding of leaf values and sums).
+
+Tutorial&#x27;s fix, float64 inputs, missing values excluded: NOT EQUIVALENT - Not equivalent: 10 distinct problem(s) at 905 place(s) in the trees. For some inputs the raw outputs differ by 565.348 (proven to be the largest possible difference).
+
+Tutorial&#x27;s fix, float32 inputs, missing values allowed: NOT EQUIVALENT - Not equivalent: 10 distinct problem(s) at 225 place(s) in the trees. For some inputs the raw outputs differ by 720.826 (proven to be the largest possible difference).
+
+</pre></div>
+          <a class="btn btn-quiet" href="reports/sklearn-onnx-tutorial-report.txt" download>Download this report (.txt)</a>
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="trust">
+  <div class="wrap sec">
+    <div class="sec-label">Trust</div>
+    <div class="sec-body">
+      <div class="sec-head">
+        <h2>Every report checks its own work.</h2>
+        <p class="lead">Three checks run on every analysis, in this order. The report shows the result of each one.</p>
+      </div>
+      <ol class="checks">
+        <li><span class="n">1</span><div><h3>Self-check before any analysis</h3><p>Inputs are built to reach every split node and sit exactly on its boundary and one float step either side, including zeros, tiny values and NaN. They run through the real libraries and through Leafparity's model. If a single decision differs, for example because a library update changed its arithmetic, Leafparity refuses to certify.</p></div></li>
+        <li><span class="n">2</span><div><h3>Witness verification</h3><p>Every reported problem, and the worst case, comes with an input that has been run through both real runtimes. The report states whether the observed difference matches the prediction.</p></div></li>
+        <li><span class="n">3</span><div><h3>Independent cross-check</h3><p>Thousands of boundary inputs run through both runtimes without using the analysis engine at all. Every observed difference must fall within the proven bound.</p></div></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section id="coverage">
+  <div class="wrap sec">
+    <div class="sec-label">Coverage</div>
+    <div class="sec-body">
+      <div class="sec-head">
+        <h2>What it checks today.</h2>
+      </div>
+      <div class="cover">
+        <div>
+          <h3>Original model</h3>
+          <dl>
+            <dt>XGBoost</dt><dd><code>gbtree</code> booster, numerical splits. Regression, binary, multiclass.</dd>
+            <dt>LightGBM</dt><dd>gbdt and rf, numerical splits, all missing-value modes. Regression, binary, multiclass.</dd>
+            <dt>scikit-learn</dt><dd>Decision trees, random forests, extra trees, gradient boosting. Optionally after a scaler or <code>CastTransformer</code> in a Pipeline.</dd>
+          </dl>
+        </div>
+        <div>
+          <h3>Converted model</h3>
+          <dl>
+            <dt>ONNX</dt><dd><code>ai.onnx.ml</code> TreeEnsembleRegressor and TreeEnsembleClassifier (opset 3 and earlier), optionally after Cast, Scaler or arithmetic with constants. Float or double input, as produced by skl2onnx and onnxmltools.</dd>
+          </dl>
+        </div>
+      </div>
+      <p class="refused"><b>Refused rather than guessed:</b> categorical splits, XGBoost <code>dart</code>, LightGBM linear trees, ONNX opset-5 <code>TreeEnsemble</code>, PMML, compiled code (m2cgen, treelite) and SQL. Need one of these? Tell us.</p>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="process">
+  <div class="wrap sec">
+    <div class="sec-label">Working with us</div>
+    <div class="sec-body">
+      <div class="sec-head">
+        <h2>Three steps from email to answer.</h2>
+      </div>
+      <ol class="steps">
+        <li><span class="n">STEP 1</span><h3>Send both models</h3><p>The original model file and the <code>.onnx</code> file, plus whether production feeds float32 or float64 values.</p></li>
+        <li><span class="n">STEP 2</span><h3>We run the check</h3><p>Within two business days you get the full report: the verdict, every problem found, a witness input for each, and the proven worst case.</p></li>
+        <li><span class="n">STEP 3</span><h3>Fix or certify</h3><p>If the models differ, the report shows where to fix the conversion. If they match, you have a record you can file with your model documentation.</p></li>
+      </ol>
+      <div class="note">
+        <h3>About your model files</h3>
+        <p>We see only the two files you send: the original model and its ONNX conversion. Never your training data, never your customers' data. Files are deleted once the report is sent; ask and we'll confirm it in writing. Prefer to keep everything in-house? Leafparity is <a href="https://github.com/Leafparity/leafparity" target="_blank" rel="noopener">open source</a> and runs on your own machine.</p>
       </div>
     </div>
   </div>
 </section>
 
 <section id="pricing">
-  <div class="wrap">
-    <p class="kicker">Pricing</p>
-    <h2>Simple, honest, self-serve.</h2>
-    <p class="section-lead">Founding-customer pricing — no "% off" games. If you sign up now, you keep this rate when it rises later.</p>
-    <div class="pricing-grid">
-      <div class="price-card">
-        <div class="plan-name">Per-model certificate</div>
-        <div class="plan-desc">One model, one conversion, one answer — for a governance file.</div>
-        <div class="price">$1,200<span class="unit"> one-off</span></div>
-        <div class="note">Delivered as a report you can hand to auditors or risk sign-off.</div>
-        <ul>
-          <li>Full EQUIVALENT / NOT EQUIVALENT proof</li>
-          <li>Every discrepancy, with a verified witness</li>
-          <li>JSON + human-readable report</li>
-        </ul>
-        <a class="btn btn-ghost" href="mailto:hello@leafparity.com?subject=Per-model%20certificate">Request a certificate</a>
+  <div class="wrap sec">
+    <div class="sec-label">Pricing</div>
+    <div class="sec-body">
+      <div class="sec-head">
+        <h2>Pay per model, or check every release.</h2>
+        <p class="lead">Founding-customer rates. Early customers keep their rate when prices go up.</p>
       </div>
-      <div class="price-card highlight">
-        <div class="plan-name">CI plan <span style="color:var(--accent); font-size:0.75rem; font-family:var(--mono); margin-left:6px;">founding rate</span></div>
-        <div class="plan-desc">Run it on every model you ship, automatically.</div>
-        <div class="price">$120<span class="unit">/month</span></div>
-        <div class="note">Priced to not need procurement approval.</div>
-        <ul>
-          <li>GitHub Action, drop-in CI step</li>
-          <li>Exit codes for CI gating (<code>--fail-above</code>)</li>
-          <li>Unlimited checks on your models</li>
-          <li>Rate locked in for life as an early customer</li>
-        </ul>
-        <a class="btn btn-primary" href="mailto:hello@leafparity.com?subject=CI%20plan">Start the CI plan</a>
-      </div>
-      <div class="price-card">
-        <div class="plan-name">Enterprise</div>
-        <div class="plan-desc">Multiple teams, models and pipelines.</div>
-        <div class="price">$9,000<span class="unit">/year</span></div>
-        <div class="note">For organizations standardizing equivalence checks across teams.</div>
-        <ul>
-          <li>Everything in the CI plan, org-wide</li>
-          <li>Priority support</li>
-          <li>Direct line for new format requests</li>
-        </ul>
-        <a class="btn btn-ghost" href="mailto:hello@leafparity.com?subject=Enterprise">Talk to us</a>
+      <div class="plans">
+        <div class="plan">
+          <div><h3>Per-model certificate</h3><p class="small muted">One model, one conversion, one answer.</p></div>
+          <ul><li>Full EQUIVALENT or NOT EQUIVALENT proof</li><li>Every problem, with a verified witness</li><li>Readable report plus JSON, ready for model-risk review</li></ul>
+          <div class="price"><span class="amount">$1,200 <small>one-off</small></span><a class="btn btn-primary" href="mailto:hello@leafparity.com?subject=Per-model%20certificate">Request certificate</a></div>
+        </div>
+        <div class="plan">
+          <div><h3>CI plan</h3><span class="tag tag-soon">Coming soon</span><p class="plan-note">Waiting on the public package release.</p></div>
+          <ul><li>GitHub Action as a drop-in CI step</li><li>Fail builds only above a proven difference you set</li><li>Unlimited checks on your models</li></ul>
+          <div class="price"><span class="amount"><s class="was">$400</s>$299 <small>/ month</small></span><span class="lock">Founding rate, locked for life</span><a class="btn btn-quiet" href="mailto:hello@leafparity.com?subject=CI%20plan%20waitlist">Join waitlist</a></div>
+        </div>
+        <div class="plan">
+          <div><h3>Enterprise</h3><p class="small muted">Volume pricing for several teams and models.</p></div>
+          <ul><li>A block of certificates across your organization, billed yearly</li><li>Priority turnaround and support</li><li>Direct line for new model formats, and first access once the CI plan ships</li></ul>
+          <div class="price"><span class="amount">$9,000 <small>/ year</small></span><a class="btn btn-quiet" href="mailto:hello@leafparity.com?subject=Enterprise">Contact sales</a></div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="final-cta" style="border-bottom:none;">
-  <div class="wrap">
-    <h2>Don't find out in production.</h2>
-    <p class="section-lead">Send us your model and its ONNX conversion. We'll tell you, with proof, whether they agree.</p>
-    <div class="email-box">
-      <span id="email-text">hello@leafparity.com</span>
-      <button onclick="navigator.clipboard.writeText('hello@leafparity.com').then(()=>{document.getElementById('copy-label').textContent='Copied!';setTimeout(()=>document.getElementById('copy-label').textContent='Copy',1500);}).catch(()=>{})">
-        <span id="copy-label">Copy</span>
-      </button>
+<section class="band" id="contact">
+  <div class="wrap contact">
+    <div class="sec-head">
+      <h2>Find out before production does.</h2>
+      <p class="lead">Send your model and its ONNX conversion. We'll reply with a proof that they agree, or the exact inputs where they don't.</p>
+    </div>
+    <div class="mailbox">
+      <div class="mail-row">
+        <span class="mail-addr" id="mail">hello@leafparity.com</span>
+        <button class="copy" id="copy-btn" type="button">Copy</button>
+      </div>
+      <ul>
+        <li>Original model (XGBoost, LightGBM or scikit-learn)</li>
+        <li>The converted <code>.onnx</code> file</li>
+        <li>Optional: a small sample of real inputs, for realistic witnesses</li>
+      </ul>
+      <a class="btn btn-primary" style="align-self:flex-start" href="mailto:hello@leafparity.com?subject=Equivalence%20check">Write an email</a>
     </div>
   </div>
 </section>
+</main>
 
-<footer>
+<footer class="foot">
   <div class="wrap">
-    <a href="https://github.com/Leafparity" target="_blank" rel="noopener">github.com/Leafparity</a>
-    &nbsp;·&nbsp;
-    <a href="mailto:hello@leafparity.com">hello@leafparity.com</a>
-    &nbsp;·&nbsp; © 2026 Leafparity
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="#"><svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="-5 -5 110 154" fill="none" stroke="#0c9b48" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M50 1 C69 18 97 44 97 76 C97 104 74 124 50 142 C26 124 3 104 3 76 C3 44 31 18 50 1 Z" stroke-width="6"/>
+  <path d="M50 3 V55" stroke-width="4.8" stroke-linecap="butt"/>
+  <path d="M26 41 L39 52 M74 41 L61 52" stroke-width="4.8"/>
+  <path d="M34 64 H66 M34 73 H66 M34 82 H66" stroke-width="4.8" stroke-linecap="butt"/>
+  <path d="M5 81 L37 104 M95 81 L63 104" stroke-width="4.8"/>
+  <path d="M50 93 V126 H61" stroke-width="4.8"/>
+</svg><span>Leafparity</span></a>
+        <p>Exact equivalence checking for XGBoost, LightGBM and scikit-learn models converted to ONNX. A proof that they match, or the inputs where they don't.</p>
+        <p class="small muted">Built by Milivoje Simonović. Open source, so every claim here is something you can check yourself.</p>
+      </div>
+      <div><h4>Product</h4><ul><li><a href="#demo">See it happen</a></li><li><a href="#results">What you get</a></li><li><a href="#cases">Real cases</a></li><li><a href="#pricing">Pricing</a></li></ul></div>
+      <div><h4>Open source</h4><ul><li><a href="https://github.com/Leafparity/leafparity" target="_blank" rel="noopener">Repository</a></li><li><a href="https://github.com/Leafparity/leafparity/tree/main/examples" target="_blank" rel="noopener">Examples</a></li><li><a href="https://github.com/Leafparity/leafparity#readme" target="_blank" rel="noopener">Documentation</a></li></ul></div>
+      <div><h4>Contact</h4><ul><li><a href="mailto:hello@leafparity.com">hello@leafparity.com</a></li><li><a href="#contact">Request a check</a></li></ul></div>
+    </div>
+    <div class="foot-bottom"><span>© 2026 Leafparity</span><span class="eq">original.txt ≡ converted.onnx</span></div>
   </div>
 </footer>
 
+<script>
+(function(){
+  var NS='http://www.w3.org/2000/svg';
+  var inputs=[
+    {age:'34', a:[0,2,'L2'], b:[0,2,'L2']},
+    {age:'-40', a:[0,1,'L0'], b:[0,1,'L0']},
+    {age:'-17.0664025', a:[0,2,'L2'], b:[0,1,'L1']},
+    {age:'0.0', a:[0,1,'L1'], b:[0,2,'L2']}
+  ];
+  var leafVal={L0:'-23.0',L1:'-12.4',L2:'+8.1',L3:'+19.6'};
+  var nodes={
+    0:{x:220,y:14,w:228,h:52},
+    1:{x:110,y:118,w:132,h:36}, 2:{x:330,y:118,w:132,h:36},
+    L0:{x:55,y:222,w:78,h:36}, L1:{x:165,y:222,w:78,h:36}, L2:{x:275,y:222,w:78,h:36}, L3:{x:385,y:222,w:78,h:36}
+  };
+  var edges=[[0,1,'yes'],[0,2,'no'],[1,'L0','yes'],[1,'L1','no'],[2,'L2','yes'],[2,'L3','no']];
+  function el(n,attrs,parent){var e=document.createElementNS(NS,n);for(var k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+  function build(svg, rootLine1, rootLine2){
+    edges.forEach(function(ed){
+      var f=nodes[ed[0]], t=nodes[ed[1]];
+      var x1=f.x, y1=f.y+f.h, x2=t.x, y2=t.y, my=(y1+y2)/2;
+      el('path',{d:'M'+x1+' '+y1+' C'+x1+' '+my+' '+x2+' '+my+' '+x2+' '+y2,'class':'edge','data-e':ed[0]+'-'+ed[1]},svg);
+      var lx=(x1+x2)/2 + (x2<x1?-12:12), ly=my-2;
+      var tx=el('text',{x:lx,y:ly,'text-anchor':'middle','class':'yn'},svg); tx.textContent=ed[2];
+    });
+    Object.keys(nodes).forEach(function(id){
+      var n=nodes[id]; var leaf=String(id).charAt(0)==='L';
+      var g=el('g',{'class':'node'+(leaf?' leaf':'')+(id==='0'?' root':''),'data-n':id},svg);
+      el('rect',{x:n.x-n.w/2,y:n.y,width:n.w,height:n.h,rx:6,'class':'box'},g);
+      if(id==='0'){
+        var t=el('text',{x:n.x,y:n.y+22,'text-anchor':'middle','class':'t1'},g);
+        t.appendChild(document.createTextNode('age ≤ -17.066402'));
+        var d=el('tspan',{'class':'diffd'},t); d.textContent=rootLine1;
+        var t2=el('text',{x:n.x,y:n.y+40,'text-anchor':'middle','class':'t2'},g); t2.textContent=rootLine2;
+      } else if(leaf){
+        var tl=el('text',{x:n.x,y:n.y+23,'text-anchor':'middle','class':'t1'},g); tl.textContent=leafVal[id];
+      } else {
+        var tn=el('text',{x:n.x,y:n.y+23,'text-anchor':'middle','class':'t1'},g); tn.textContent= id==1 ? 'income ≤ 41.2' : 'income ≤ 88.5';
+      }
+    });
+  }
+  var A=document.getElementById('tree-a'), B=document.getElementById('tree-b');
+  if(!A||!B) return;
+  build(A,'76','0 counts as missing → goes left');
+  build(B,'44','0 is an ordinary number');
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var timers=[];
+  function light(svg, path, same){
+    svg.querySelectorAll('.on,.hit,.good,.bad').forEach(function(e){e.classList.remove('on','hit','good','bad');});
+    var steps=[];
+    steps.push(function(){svg.querySelector('[data-n="0"]').classList.add('on');});
+    steps.push(function(){svg.querySelector('[data-e="0-'+path[1]+'"]').classList.add('on'); svg.querySelector('[data-n="'+path[1]+'"]').classList.add('on');});
+    steps.push(function(){svg.querySelector('[data-e="'+path[1]+'-'+path[2]+'"]').classList.add('on'); var lf=svg.querySelector('[data-n="'+path[2]+'"]'); lf.classList.add('hit', same?'good':'bad');});
+    steps.forEach(function(fn,i){ if(reduce) fn(); else timers.push(setTimeout(fn, i*260)); });
+  }
+  var pill=document.getElementById('v-pill'), msg=document.getElementById('v-msg');
+  function show(i){
+    timers.forEach(clearTimeout); timers=[];
+    var inp=inputs[i], same=inp.a[2]===inp.b[2];
+    light(A,inp.a,same); light(B,inp.b,same);
+    document.querySelectorAll('.inp').forEach(function(b){b.setAttribute('aria-pressed', b.getAttribute('data-i')==i ? 'true':'false');});
+    if(same){ pill.className='pill pill-ok'; pill.textContent='SAME LEAF'; msg.innerHTML='Both models predict <b>'+leafVal[inp.a[2]]+'</b>.'; }
+    else {
+      pill.className='pill pill-bad'; pill.textContent='DIFFERENT LEAVES';
+      var why = inp.age==='0.0' ? 'The original treats 0 as missing and goes left; the converted model compares it as a number and goes right.' : 'This value sits between the two thresholds, so each model takes a different branch at the root.';
+      msg.innerHTML='Original predicts <b>'+leafVal[inp.a[2]]+'</b>, converted predicts <b>'+leafVal[inp.b[2]]+'</b>. '+why;
+    }
+  }
+  document.querySelectorAll('.inp').forEach(function(b){ b.addEventListener('click', function(){ show(+b.getAttribute('data-i')); }); });
+  show(0);
+})();
+
+(function(){
+  var btn = document.getElementById('copy-btn');
+  if(!btn) return;
+  btn.addEventListener('click', function(){
+    var text = 'hello@leafparity.com';
+    function done(){ btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = 'Copy'; }, 1600); }
+    function fallback(){
+      var r = document.createRange(); r.selectNodeContents(document.getElementById('mail'));
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      btn.textContent = 'Press Ctrl+C';
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else { fallback(); }
+  });
+})();
+</script>
+<!--
+Privacy-friendly analytics (optional): sign up free at https://www.goatcounter.com
+(no card, no cookies), then uncomment the line below with your own site code.
+<script data-goatcounter="https://YOURCODE.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+-->
 </body>
 </html>
