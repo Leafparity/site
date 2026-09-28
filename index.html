@@ -496,7 +496,7 @@ section.band .note{background:var(--paper)}
         </div>
         <div class="axis" aria-hidden="true"><div></div><div class="ticks"><span style="left:0">0</span><span style="left:27.74%">200</span><span style="left:55.48%">400</span><span style="left:83.22%">600</span></div></div>
       </div>
-      <p class="case-text">This is the sklearn-onnx documentation's own "Issues when switching to float" example (StandardScaler and a decision tree). Its test set suggests the error tops out around 156. The real maximum, proven by walking every split, is 556 — more than three and a half times higher. Leafparity also certifies the tutorial's <code>CastTransformer</code> fix as equivalent for float32 inputs without NaN, and shows the fix does not hold for float64 inputs. <a href="#full-report">See the complete report below.</a></p>
+      <p class="case-text">This is the sklearn-onnx documentation's own "Issues when switching to float" example (StandardScaler and a decision tree). Its test set suggests the error tops out around 156. The real maximum, proven by walking every split, is 556, more than three and a half times higher. Leafparity also certifies the tutorial's <code>CastTransformer</code> fix as equivalent for float32 inputs without NaN, and shows the fix does not hold for float64 inputs. <a href="#full-report">See the complete report below.</a></p>
       <div class="table-scroll">
         <table>
           <thead><tr><th>Setup</th><th>What Leafparity reports</th></tr></thead>
@@ -512,7 +512,7 @@ section.band .note{background:var(--paper)}
       <details class="full-report" id="full-report">
         <summary>View the complete, unedited report for this case</summary>
         <div class="fr-body">
-          <p class="fr-note">Exactly what <code>examples/01_sklearn_onnx_float_tutorial.py</code> prints when you run it yourself &mdash; nothing shortened or reworded. The bar chart above and the hero example both come from a report like this one.</p>
+          <p class="fr-note">Exactly what <code>examples/01_sklearn_onnx_float_tutorial.py</code> prints when you run it yourself. Nothing shortened or reworded. The bar chart above and the hero example both come from a report like this one.</p>
           <div class="fr-scroll"><pre>Test-set comparison (what the tutorial does): max |difference| = 155.52
 
 ==============================================================================
@@ -645,7 +645,7 @@ Tutorial&#x27;s fix, float32 inputs, missing values allowed: NOT EQUIVALENT - No
       </div>
       <div class="note">
         <h3>How you pay</h3>
-        <p>Payment is upfront, by card or bank transfer via a PayPal invoice sent to you after we confirm the request. If leafparity can't produce a verdict for your model &mdash; it uses a construct we don't yet support, exit code 2 &mdash; you get a full refund, no questions asked.</p>
+        <p>Payment is upfront, by card or bank transfer via a PayPal invoice sent to you after we confirm the request. If leafparity can't produce a verdict for your model because it uses a construct we don't yet support (exit code 2), you get a full refund, no questions asked.</p>
       </div>
     </div>
   </div>
