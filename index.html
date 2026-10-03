@@ -190,6 +190,9 @@ td:first-child{color:var(--ink); font-weight:500; width:38%}
 .cover h3{margin-bottom:10px; font:500 .78rem/1.5 var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3)}
 .refused{font-size:.95rem; color:var(--ink-2); background:var(--band); border-radius:8px; padding:16px 18px}
 section.band .refused{background:var(--paper)}
+.runbox{background:var(--ink); color:#f5f2ea; border-radius:10px; padding:18px 20px; font:500 .86rem/1.75 var(--mono); max-width:44em; white-space:pre-wrap; overflow-wrap:anywhere; margin:0}
+.runbox .c{color:#9fb3a6}
+.run-after{color:var(--ink-2); font-size:.95rem; max-width:44em}
 .note{font-size:.95rem; color:var(--ink-2); background:var(--band); border-radius:8px; padding:18px 20px; display:flex; flex-direction:column; gap:6px; max-width:44em}
 .note h3{font:600 .95rem/1.3 var(--sans); color:var(--ink)}
 section.band .note{background:var(--paper)}
@@ -321,7 +324,7 @@ section.band .note{background:var(--paper)}
       <a class="hide-sm" href="#cases">Real cases</a>
       <a class="hide-sm" href="#pricing">Pricing</a>
       <a class="hide-sm" href="https://github.com/Leafparity/leafparity" target="_blank" rel="noopener">GitHub</a>
-      <a class="btn btn-primary" href="#contact">Request a check</a>
+      <a class="btn btn-primary" href="#process">Run it yourself</a>
     </nav>
   </div>
 </header>
@@ -334,10 +337,10 @@ section.band .note{background:var(--paper)}
       <h1>Is your ONNX model the same model you trained?</h1>
       <p class="lead">Leafparity compares an XGBoost, LightGBM or scikit-learn tree model with its ONNX conversion over every possible input. It either proves the two always agree, or shows you exactly which inputs get a different answer.</p>
       <div class="hero-actions">
-        <a class="btn btn-primary" href="#contact">Request a check</a>
+        <a class="btn btn-primary" href="#process">Run it yourself</a>
         <a class="btn btn-quiet" href="#problem">See how it works</a>
       </div>
-      <div class="works-with"><span>XGBoost</span><span>LightGBM</span><span>scikit-learn</span><span>→ ONNX via skl2onnx or onnxmltools</span></div>
+      <div class="works-with"><span>XGBoost</span><span>LightGBM</span><span>scikit-learn</span><span>→ ONNX via skl2onnx or onnxmltools</span><span>Open source (Apache 2.0), runs on your own machine</span></div>
     </div>
 
     <div>
@@ -629,19 +632,27 @@ Tutorial&#x27;s fix, float32 inputs, missing values allowed: NOT EQUIVALENT - No
 
 <section class="band" id="process">
   <div class="wrap sec">
-    <div class="sec-label">Working with us</div>
+    <div class="sec-label">Try it</div>
     <div class="sec-body">
       <div class="sec-head">
-        <h2>Three steps from email to answer.</h2>
+        <h2>Run it on your own machine.</h2>
+        <p class="lead">Leafparity is open source (Apache 2.0). Your models never have to leave your computer or your company network.</p>
       </div>
+      <pre class="runbox"><span class="c"># 1. install</span>
+pip install "leafparity[all] @ git+https://github.com/Leafparity/leafparity.git"
+
+<span class="c"># 2. compare your original model with its ONNX conversion</span>
+leafparity check model.joblib model.onnx</pre>
+      <p class="run-after">Exit code 0 means proven equivalent. Exit code 1 means not equivalent, with the exact inputs that differ. Exit code 2 means the model uses something Leafparity cannot analyse exactly yet, so it says so instead of guessing. A typical small model takes a few seconds. The <a href="https://github.com/Leafparity/leafparity#usage" target="_blank" rel="noopener">README</a> lists every option.</p>
+      <h3 style="margin-top:12px">Want a certificate you can file, or a second pair of eyes?</h3>
       <ol class="steps">
-        <li><span class="n">STEP 1</span><h3>Send both models</h3><p>The original model file and the <code>.onnx</code> file, plus whether production feeds float32 or float64 values.</p></li>
+        <li><span class="n">STEP 1</span><h3>Send both models under an NDA</h3><p>The original model file and the <code>.onnx</code> file, plus whether production feeds float32 or float64 values. We sign an NDA first if you ask for one.</p></li>
         <li><span class="n">STEP 2</span><h3>We run the check</h3><p>Within two business days you get the full report: the verdict, every problem found, a witness input for each, and the proven worst case.</p></li>
         <li><span class="n">STEP 3</span><h3>Fix or certify</h3><p>If the models differ, the report shows where to fix the conversion. If they match, you have a record you can file with your model documentation.</p></li>
       </ol>
       <div class="note">
         <h3>About your model files</h3>
-        <p>We see only the two files you send: the original model and its ONNX conversion. Never your training data, never your customers' data. Files are deleted once the report is sent; ask and we'll confirm it in writing. Prefer to keep everything in-house? Leafparity is <a href="https://github.com/Leafparity/leafparity" target="_blank" rel="noopener">open source</a> and runs on your own machine.</p>
+        <p>By default your files stay with you: Leafparity runs locally, so we never see your model unless you choose to send it. For a certificate we need the original model and its ONNX conversion, nothing else. Never your training data, never your customers' data. Files are deleted once the report is sent; ask and we'll confirm it in writing. Prefer not to send anything? Run the check yourself and send us only the report if you want a second opinion. The report lists split thresholds and example inputs, so read it before you share it.</p>
       </div>
       <div class="note">
         <h3>How you pay</h3>
@@ -684,7 +695,7 @@ Tutorial&#x27;s fix, float32 inputs, missing values allowed: NOT EQUIVALENT - No
   <div class="wrap contact">
     <div class="sec-head">
       <h2>Find out before production does.</h2>
-      <p class="lead">Send your model and its ONNX conversion. We'll reply with a proof that they agree, or the exact inputs where they don't.</p>
+      <p class="lead">Run the check yourself, or send us the model and its ONNX conversion under an NDA. You get a proof that they agree, or the exact inputs where they don't.</p>
     </div>
     <div class="mailbox">
       <div class="mail-row">
